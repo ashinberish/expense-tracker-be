@@ -1,0 +1,13 @@
+{
+  "name": "expense-tracker-be",
+  "version": "1.0.0",
+  "description": "Expense Tracker Edge Functions",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "ashinberish",
+  "license": "ISC",
+  "dependencies": {
+    "supabase": "^1.142.2"
+  }
+}
