@@ -4,3 +4,5 @@ node_modules/
 .branches
 .temp
 *.sql
+
+secrets.*
