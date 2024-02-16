@@ -1,30 +1,30 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js";
 import { corsHeaders } from "../shared/cors.ts";
 
-interface IExpense{
-  id: number;
+interface IExpense {
+  id?: number;
   expense_name: string;
   expense_desc: string | null;
   expense_amount: number;
-  expense_emoji:string;
+  expense_emoji: string;
   expense_ts: Date;
   user_id: string;
   group_id: string | null;
   created_at: Date;
-};
+}
 
-async function createExpense(supabaseClient: SupabaseClient, expense: IExpense) {
-  const { data, error } = await supabaseClient.from('tasks').insert(expense);
+async function createExpense(
+  supabaseClient: SupabaseClient,
+  expense: IExpense,
+) {
+  const { error } = await supabaseClient.from("expenses").insert(expense);
+  if (error) throw error;
 
-  if (error) throw error
-
-  return new Response(JSON.stringify({ data }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  return new Response(null, {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
     status: 201,
   });
 }
-
-
 
 Deno.serve(async (req) => {
   const { url, method } = req;
@@ -44,8 +44,8 @@ Deno.serve(async (req) => {
       },
     );
 
-    const taskPattern = new URLPattern({ pathname: "/expense/:id" });
-    const matchingPath = taskPattern.exec(url);
+    const expensePattern = new URLPattern({ pathname: "/expense/:id" });
+    const matchingPath = expensePattern.exec(url);
     const id = matchingPath ? matchingPath.pathname.groups.id : null;
 
     let expense = null;
@@ -55,10 +55,10 @@ Deno.serve(async (req) => {
     }
 
     /*
-    * TODO: Add GET, PUT, DELETE cases
-   */
+     * TODO: Add GET, PUT, DELETE cases
+     */
 
-    switch (true){
+    switch (true) {
       // case id && method === "GET":
       //   console.log("GET /expense/:id");
       //   break;
