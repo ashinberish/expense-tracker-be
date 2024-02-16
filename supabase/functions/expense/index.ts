@@ -1,34 +1,104 @@
-import { createClient } from "npm:@supabase/supabase-js";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js";
 import { corsHeaders } from "../shared/cors.ts";
 
+interface IExpense{
+  id: number;
+  expense_name: string;
+  expense_desc: string | null;
+  expense_amount: number;
+  expense_emoji:string;
+  expense_ts: Date;
+  user_id: string;
+  group_id: string | null;
+  created_at: Date;
+};
+
+async function createExpense(supabaseClient: SupabaseClient, expense: IExpense) {
+  const { data, error } = await supabaseClient.from('tasks').insert(expense);
+
+  if (error) throw error
+
+  return new Response(JSON.stringify({ data }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    status: 201,
+  });
+}
+
+
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
+  const { url, method } = req;
+
+  if (method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    {
-      global: {
-        headers: { Authorization: req.headers.get("Authorization")! },
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
       },
-    },
-  );
+    );
 
-  const { data, error } = await supabase.from("profiles").select("*");
+    const taskPattern = new URLPattern({ pathname: "/expense/:id" });
+    const matchingPath = taskPattern.exec(url);
+    const id = matchingPath ? matchingPath.pathname.groups.id : null;
 
-  if (error) {
+    let expense = null;
+    if (method === "POST" || method === "PUT") {
+      const body = await req.json();
+      expense = body.expense;
+    }
+
+    /*
+    * TODO: Add GET, PUT, DELETE cases
+   */
+
+    switch (true){
+      // case id && method === "GET":
+      //   console.log("GET /expense/:id");
+      //   break;
+      // case id && method === "PUT":
+      //   console.log("PUT /expense/:id");
+      //   break;
+      // case id && method === "DELETE":
+      //   console.log("DELETE /expense/:id");
+      //   break;
+      case method === "POST":
+        return createExpense(supabase, expense);
+      // case method === "GET":
+      //   console.log("GET /expense");
+      //   break;
+      default:
+        return createExpense(supabase, expense);
+    }
+  } catch {
     return new Response(
-      JSON.stringify(error),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify("Oops! Grab a cup of coffee and give it a few minutes."),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 
-  return new Response(
-    JSON.stringify(data),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  );
+  // const { data, error } = await supabase.from("profiles").select("*");
+
+  // if (error) {
+  //   return new Response(
+  //     JSON.stringify(error),
+  //     { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  //   );
+  // }
+
+  // return new Response(
+  //   JSON.stringify(data),
+  //   { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  // );
 });
 
 /* To invoke locally:
