@@ -26,6 +26,63 @@ async function createExpense(
   });
 }
 
+async function getExpenses(
+  supabaseClient: SupabaseClient,
+  specificDate: string | null,
+  fromDate: string | null,
+  toDate: string | null,
+) {
+  if (specificDate) {
+    const [month, day, year] = specificDate.split("-");
+    const formattedDate = `${year}-${month}-${day}`;
+    const startDate = new Date(`${formattedDate}T00:00:00`);
+    const endDate = new Date(`${formattedDate}T23:59:59`);
+
+    const { data, error } = await supabaseClient.from("expenses").select("*")
+      .gte("expense_ts", startDate.toLocaleString("en-US", { timeZone: "UTC" }))
+      .lte(
+        "expense_ts",
+        endDate.toLocaleString("en-US", { timeZone: "UTC" }),
+      );
+    if (error) throw error;
+
+    const totalExpenseAmount = data.reduce(
+      (total: number, expense: IExpense) => {
+        return total + expense.expense_amount;
+      },
+      0,
+    );
+
+    return new Response(
+      JSON.stringify({ total_amount: totalExpenseAmount, expenses: data }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      },
+    );
+  }
+
+  if (fromDate && toDate) {
+    // TODO: Add support for date range
+    return new Response(
+      JSON.stringify({ "fromDate": fromDate, "toDate": toDate }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      },
+    );
+  }
+  return new Response(
+    JSON.stringify({
+      error: "Please provide a specific date or a date range.",
+    }),
+    {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
+    },
+  );
+}
+
 Deno.serve(async (req) => {
   const { url, method } = req;
 
@@ -46,22 +103,27 @@ Deno.serve(async (req) => {
 
     const expensePattern = new URLPattern({ pathname: "/expense/:id" });
     const matchingPath = expensePattern.exec(url);
+    // deno-lint-ignore no-unused-vars
     const id = matchingPath ? matchingPath.pathname.groups.id : null;
+    const urlSearchParams = new URL(url).searchParams;
 
     let expense = null;
+    const specificDate = urlSearchParams.get("specificDate") || null;
+    const fromDate = urlSearchParams.get("fromDate") || null;
+    const toDate = urlSearchParams.get("toDate") || null;
+
     if (method === "POST" || method === "PUT") {
       const body = await req.json();
       expense = body.expense;
     }
 
     /*
-     * TODO: Add GET, PUT, DELETE cases
+     * TODO: Add PUT, DELETE cases
      */
 
     switch (true) {
-      // case id && method === "GET":
-      //   console.log("GET /expense/:id");
-      //   break;
+      case method === "GET":
+        return getExpenses(supabase, specificDate, fromDate, toDate);
       // case id && method === "PUT":
       //   console.log("PUT /expense/:id");
       //   break;
@@ -85,20 +147,6 @@ Deno.serve(async (req) => {
       },
     );
   }
-
-  // const { data, error } = await supabase.from("profiles").select("*");
-
-  // if (error) {
-  //   return new Response(
-  //     JSON.stringify(error),
-  //     { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  //   );
-  // }
-
-  // return new Response(
-  //   JSON.stringify(data),
-  //   { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  // );
 });
 
 /* To invoke locally:
